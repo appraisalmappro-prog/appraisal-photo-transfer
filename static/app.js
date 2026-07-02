@@ -1,5 +1,6 @@
 const csrfToken = window.PHOTO_TRANSFER_CSRF;
 const folderInput = document.querySelector("#folderInput");
+const createFolderButton = document.querySelector("#createFolderButton");
 const photoInput = document.querySelector("#photoInput");
 const uploadButton = document.querySelector("#uploadButton");
 const progressWrap = document.querySelector(".progress-wrap");
@@ -16,6 +17,7 @@ init();
 function init() {
   refreshButton.addEventListener("click", loadFolders);
   folderSelect.addEventListener("change", renderSelectedFolder);
+  createFolderButton.addEventListener("click", createFolder);
   uploadButton.addEventListener("click", uploadPhotos);
   deleteFolderButton.addEventListener("click", deleteSelectedFolder);
   loadFolders();
@@ -26,7 +28,36 @@ function setStatus(message, isError = false) {
   statusText.classList.toggle("error", isError);
 }
 
-async function loadFolders() {
+function currentFolderName() {
+  return folderInput.value.trim() || folderSelect.value.trim();
+}
+
+async function createFolder() {
+  const folder = currentFolderName();
+  if (!folder) {
+    setStatus("Enter a property folder or address first.", true);
+    folderInput.focus();
+    return;
+  }
+  const response = await fetch("/api/folders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
+    },
+    body: JSON.stringify({ folder }),
+  });
+  if (!response.ok) {
+    setStatus("Unable to create folder. Please sign in again and try once more.", true);
+    return;
+  }
+  const data = await response.json();
+  folderInput.value = data.folder;
+  setStatus(`Folder ready: ${data.folder}`);
+  await loadFolders(data.folder);
+}
+
+async function loadFolders(preferredFolder = "") {
   const response = await fetch("/api/folders");
   if (!response.ok) {
     setStatus("Unable to load folders.", true);
@@ -46,6 +77,9 @@ async function loadFolders() {
     option.textContent = `${folder.name} (${folder.count})`;
     folderSelect.append(option);
   });
+  if (preferredFolder) {
+    folderSelect.value = preferredFolder;
+  }
   renderSelectedFolder();
 }
 
@@ -53,6 +87,9 @@ async function renderSelectedFolder() {
   const folder = folderSelect.value;
   if (!folder) {
     return;
+  }
+  if (!folderInput.value.trim()) {
+    folderInput.value = folder;
   }
   downloadAllButton.href = `/api/download/${encodeURIComponent(folder)}`;
   const response = await fetch(`/api/photos/${encodeURIComponent(folder)}`);
@@ -82,7 +119,7 @@ async function renderSelectedFolder() {
 }
 
 function uploadPhotos() {
-  const folder = folderInput.value.trim();
+  const folder = currentFolderName();
   const files = Array.from(photoInput.files || []);
   if (!folder) {
     setStatus("Enter a property folder or address first.", true);
@@ -116,9 +153,10 @@ function uploadPhotos() {
       progressBar.style.width = "100%";
       setStatus("Upload complete.");
       photoInput.value = "";
-      await loadFolders();
-      folderSelect.value = folder;
-      await renderSelectedFolder();
+      const payload = JSON.parse(xhr.responseText || "{}");
+      const savedFolder = payload.folder || folder;
+      folderInput.value = savedFolder;
+      await loadFolders(savedFolder);
       return;
     }
     setStatus("Upload failed. Please try again.", true);

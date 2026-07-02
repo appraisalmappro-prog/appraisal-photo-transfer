@@ -16,6 +16,16 @@ Environment variables:
 
 This fresh version does not use Gunicorn, so Render should not show `gunicorn: command not found`.
 
+## Workbench Embed
+
+The app is configured with `SameSite=None` and secure session cookies so it can be signed into from the Appraisal Workbench Field Photos iframe over HTTPS.
+
+If browser privacy settings block third-party cookies, open the Photo Transfer app in a new tab and sign in there:
+
+```text
+https://appraisal-photo-transfer.onrender.com
+```
+
 ## Use
 
 1. Open the web app on your phone.

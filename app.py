@@ -29,6 +29,8 @@ def create_app():
     app.config["SECRET_KEY"] = os.environ.get("PHOTO_TOOL_SECRET_KEY") or secrets.token_hex(32)
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=12)
     app.config["MAX_CONTENT_LENGTH"] = 800 * 1024 * 1024
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
 
     upload_root = Path(app.instance_path) / "uploads"
     upload_root.mkdir(parents=True, exist_ok=True)
@@ -82,8 +84,9 @@ def create_app():
     def login():
         error = ""
         if request.method == "POST":
-            password = request.form.get("password", "")
-            if secrets.compare_digest(password, admin_password()):
+            password = request.form.get("password", "").strip()
+            expected_password = admin_password().strip()
+            if secrets.compare_digest(password, expected_password):
                 session.clear()
                 session.permanent = True
                 session["authenticated"] = True
@@ -106,6 +109,15 @@ def create_app():
                 photos = [item for item in path.iterdir() if item.is_file()]
                 folders.append({"name": path.name, "count": len(photos)})
         return jsonify({"folders": folders})
+
+    @app.post("/api/folders")
+    def create_folder():
+        require_login()
+        require_csrf()
+        payload = request.get_json(silent=True) or {}
+        folder = safe_folder_name(payload.get("folder"))
+        path = folder_path(folder)
+        return jsonify({"folder": path.name})
 
     @app.get("/api/photos/<folder>")
     def list_photos(folder):
