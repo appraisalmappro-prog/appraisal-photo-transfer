@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Appraisal Photo Transfer</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Private Appraisal Photos</p>
+        <h1>Photo Transfer</h1>
+      </div>
+      <form method="post" action="/logout">
+        <button class="ghost" type="submit">Logout</button>
+      </form>
+    </header>
+
+    <main class="layout">
+      <section class="upload-card">
+        <h2>Upload Photos</h2>
+        <p class="muted">Create or select a property folder, then upload photos from your phone or desktop.</p>
+        <label>
+          Property Folder / Address
+          <input id="folderInput" type="text" placeholder="123 Main St" autocomplete="street-address">
+        </label>
+        <label class="upload-box">
+          <input id="photoInput" type="file" accept="image/*" multiple>
+          <span>Choose or take photos</span>
+          <small>Multiple photos supported</small>
+        </label>
+        <button id="uploadButton" type="button">Upload Photos</button>
+        <div class="progress-wrap" hidden>
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <p id="statusText" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="gallery-card">
+        <div class="gallery-head">
+          <div>
+            <h2>Photo Folders</h2>
+            <p class="muted">Review, download, or delete photos after the report is complete.</p>
+          </div>
+          <button id="refreshButton" class="ghost" type="button">Refresh</button>
+        </div>
+        <div class="folder-row">
+          <select id="folderSelect" aria-label="Photo folders"></select>
+          <a id="downloadAllButton" class="button-link" href="#">Download All</a>
+          <button id="deleteFolderButton" class="danger" type="button">Delete Folder</button>
+        </div>
+        <div id="photoGrid" class="photo-grid"></div>
+      </section>
+    </main>
+
+    <script>
+      window.PHOTO_TRANSFER_CSRF = "{{ csrf_token }}";
+    </script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

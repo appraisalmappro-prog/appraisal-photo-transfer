@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Photo Transfer Login</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <p class="eyebrow">Private Appraisal Photos</p>
+      <h1>Photo Transfer</h1>
+      <p class="muted">Sign in to upload, review, and download appraisal field photos.</p>
+      <form method="post" class="login-form">
+        <label>
+          Password
+          <input type="password" name="password" autocomplete="current-password" required autofocus>
+        </label>
+        {% if error %}
+          <p class="error">{{ error }}</p>
+        {% endif %}
+        <button type="submit">Sign In</button>
+      </form>
+    </main>
+  </body>
+</html>
