@@ -11,6 +11,10 @@ const folderSelect = document.querySelector("#folderSelect");
 const downloadAllButton = document.querySelector("#downloadAllButton");
 const deleteFolderButton = document.querySelector("#deleteFolderButton");
 const photoGrid = document.querySelector("#photoGrid");
+const photoLightbox = document.querySelector("#photoLightbox");
+const lightboxImage = document.querySelector("#lightboxImage");
+const lightboxCaption = document.querySelector("#lightboxCaption");
+const lightboxCloseButton = document.querySelector("#lightboxCloseButton");
 
 init();
 
@@ -20,6 +24,17 @@ function init() {
   createFolderButton.addEventListener("click", createFolder);
   uploadButton.addEventListener("click", uploadPhotos);
   deleteFolderButton.addEventListener("click", deleteSelectedFolder);
+  lightboxCloseButton.addEventListener("click", closePhotoPreview);
+  photoLightbox.addEventListener("click", (event) => {
+    if (event.target === photoLightbox) {
+      closePhotoPreview();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !photoLightbox.hidden) {
+      closePhotoPreview();
+    }
+  });
   loadFolders();
 }
 
@@ -107,15 +122,37 @@ async function renderSelectedFolder() {
     const card = document.createElement("article");
     card.className = "photo-card";
     card.innerHTML = `
-      <img src="${photo.url}" alt="">
+      <button type="button" class="photo-preview-button" aria-label="Open ${photo.filename}">
+        <img src="${photo.url}" alt="">
+      </button>
       <div>
         <span>${photo.filename}</span>
-        <button type="button" class="danger small">Delete</button>
+        <button type="button" class="danger small photo-delete-button">Delete</button>
       </div>
     `;
-    card.querySelector("button").addEventListener("click", () => deletePhoto(folder, photo.filename));
+    card.querySelector(".photo-preview-button").addEventListener("click", () => {
+      openPhotoPreview(photo.url, photo.filename);
+    });
+    card.querySelector(".photo-delete-button").addEventListener("click", () => deletePhoto(folder, photo.filename));
     photoGrid.append(card);
   });
+}
+
+function openPhotoPreview(url, filename) {
+  lightboxImage.src = url;
+  lightboxImage.alt = filename;
+  lightboxCaption.textContent = filename;
+  photoLightbox.hidden = false;
+  document.body.classList.add("lightbox-open");
+  lightboxCloseButton.focus();
+}
+
+function closePhotoPreview() {
+  photoLightbox.hidden = true;
+  lightboxImage.src = "";
+  lightboxImage.alt = "";
+  lightboxCaption.textContent = "";
+  document.body.classList.remove("lightbox-open");
 }
 
 function uploadPhotos() {
