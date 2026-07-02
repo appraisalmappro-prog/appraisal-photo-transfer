@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+MAX_UPLOAD_FILES = 70
 
 
 def create_app():
@@ -141,7 +142,7 @@ def create_app():
         require_csrf()
         folder = safe_folder_name(request.form.get("folder"))
         path = folder_path(folder)
-        files = request.files.getlist("photos")
+        files = request.files.getlist("photos")[:MAX_UPLOAD_FILES]
         saved = []
         for file in files:
             if not file or not file.filename or not allowed_file(file.filename):

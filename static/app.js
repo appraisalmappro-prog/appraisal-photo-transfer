@@ -5,6 +5,7 @@ const photoInput = document.querySelector("#photoInput");
 const uploadButton = document.querySelector("#uploadButton");
 const progressWrap = document.querySelector(".progress-wrap");
 const progressBar = document.querySelector("#progressBar");
+const selectedPhotoList = document.querySelector("#selectedPhotoList");
 const statusText = document.querySelector("#statusText");
 const refreshButton = document.querySelector("#refreshButton");
 const folderSelect = document.querySelector("#folderSelect");
@@ -15,6 +16,7 @@ const photoLightbox = document.querySelector("#photoLightbox");
 const lightboxImage = document.querySelector("#lightboxImage");
 const lightboxCaption = document.querySelector("#lightboxCaption");
 const lightboxCloseButton = document.querySelector("#lightboxCloseButton");
+const MAX_UPLOAD_FILES = 70;
 
 init();
 
@@ -22,6 +24,7 @@ function init() {
   refreshButton.addEventListener("click", loadFolders);
   folderSelect.addEventListener("change", renderSelectedFolder);
   createFolderButton.addEventListener("click", createFolder);
+  photoInput.addEventListener("change", renderSelectedFiles);
   uploadButton.addEventListener("click", uploadPhotos);
   deleteFolderButton.addEventListener("click", deleteSelectedFolder);
   lightboxCloseButton.addEventListener("click", closePhotoPreview);
@@ -45,6 +48,75 @@ function setStatus(message, isError = false) {
 
 function currentFolderName() {
   return folderInput.value.trim() || folderSelect.value.trim();
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 KB";
+  }
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderSelectedFiles(status = "Ready") {
+  const files = Array.from(photoInput.files || []);
+  if (!files.length) {
+    selectedPhotoList.hidden = true;
+    selectedPhotoList.innerHTML = "";
+    return;
+  }
+  const isOverLimit = files.length > MAX_UPLOAD_FILES;
+  const visibleFiles = files.slice(0, MAX_UPLOAD_FILES);
+  selectedPhotoList.hidden = false;
+  selectedPhotoList.innerHTML = `
+    <div class="selected-photo-list-head">
+      <strong>${visibleFiles.length} photo${visibleFiles.length === 1 ? "" : "s"} selected</strong>
+      <span>${isOverLimit ? `Limit ${MAX_UPLOAD_FILES}` : status}</span>
+    </div>
+    ${isOverLimit ? `<p class="selected-photo-warning">Only the first ${MAX_UPLOAD_FILES} photos will be uploaded. Please upload the rest in another batch.</p>` : ""}
+    <div class="selected-photo-items"></div>
+  `;
+  const items = selectedPhotoList.querySelector(".selected-photo-items");
+  visibleFiles.forEach((file, index) => {
+    const item = document.createElement("article");
+    item.className = "selected-photo-item";
+    item.dataset.fileIndex = String(index);
+    item.innerHTML = `
+      <div class="selected-photo-thumb" aria-hidden="true"></div>
+      <div class="selected-photo-meta">
+        <strong>${file.name}</strong>
+        <span>${formatBytes(file.size)}</span>
+      </div>
+      <span class="selected-photo-status">${status}</span>
+    `;
+    const thumb = item.querySelector(".selected-photo-thumb");
+    if (file.type.startsWith("image/")) {
+      const image = document.createElement("img");
+      image.alt = "";
+      image.src = URL.createObjectURL(file);
+      image.addEventListener("load", () => URL.revokeObjectURL(image.src), { once: true });
+      thumb.append(image);
+    }
+    items.append(item);
+  });
+}
+
+function updateSelectedFileStatus(status) {
+  if (selectedPhotoList.hidden) {
+    return;
+  }
+  const statusBadges = selectedPhotoList.querySelectorAll(".selected-photo-status");
+  statusBadges.forEach((badge) => {
+    badge.textContent = status;
+    badge.classList.toggle("uploaded", status === "Uploaded");
+    badge.classList.toggle("failed", status === "Failed");
+  });
+  const headerStatus = selectedPhotoList.querySelector(".selected-photo-list-head span");
+  if (headerStatus) {
+    headerStatus.textContent = status;
+  }
 }
 
 async function createFolder() {
@@ -157,15 +229,19 @@ function closePhotoPreview() {
 
 function uploadPhotos() {
   const folder = currentFolderName();
-  const files = Array.from(photoInput.files || []);
+  const selectedFiles = Array.from(photoInput.files || []);
+  const files = selectedFiles.slice(0, MAX_UPLOAD_FILES);
   if (!folder) {
     setStatus("Enter a property folder or address first.", true);
     folderInput.focus();
     return;
   }
-  if (!files.length) {
+  if (!selectedFiles.length) {
     setStatus("Choose one or more photos first.", true);
     return;
+  }
+  if (selectedFiles.length > MAX_UPLOAD_FILES) {
+    setStatus(`Only the first ${MAX_UPLOAD_FILES} photos will upload. Upload the rest in another batch.`, false);
   }
 
   const formData = new FormData();
@@ -177,6 +253,7 @@ function uploadPhotos() {
   xhr.setRequestHeader("X-CSRF-Token", csrfToken);
   progressWrap.hidden = false;
   progressBar.style.width = "0%";
+  updateSelectedFileStatus("Uploading");
   setStatus("Uploading photos...");
 
   xhr.upload.addEventListener("progress", (event) => {
@@ -188,6 +265,7 @@ function uploadPhotos() {
   xhr.addEventListener("load", async () => {
     if (xhr.status >= 200 && xhr.status < 300) {
       progressBar.style.width = "100%";
+      updateSelectedFileStatus("Uploaded");
       setStatus("Upload complete.");
       photoInput.value = "";
       const payload = JSON.parse(xhr.responseText || "{}");
@@ -196,10 +274,14 @@ function uploadPhotos() {
       await loadFolders(savedFolder);
       return;
     }
+    updateSelectedFileStatus("Failed");
     setStatus("Upload failed. Please try again.", true);
   });
 
-  xhr.addEventListener("error", () => setStatus("Upload failed. Please try again.", true));
+  xhr.addEventListener("error", () => {
+    updateSelectedFileStatus("Failed");
+    setStatus("Upload failed. Please try again.", true);
+  });
   xhr.send(formData);
 }
 
