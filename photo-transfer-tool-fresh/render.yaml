@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: appraisal-photo-transfer
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PHOTO_TOOL_ADMIN_PASSWORD
+        sync: false
+      - key: PHOTO_TOOL_SECRET_KEY
+        generateValue: true
